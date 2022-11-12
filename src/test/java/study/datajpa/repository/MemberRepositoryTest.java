@@ -12,6 +12,8 @@ import study.datajpa.dto.MemberDto;
 import study.datajpa.entity.Member;
 import study.datajpa.entity.Team;
 
+import javax.persistence.EntityManager;
+import javax.persistence.PersistenceContext;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -28,6 +30,8 @@ class MemberRepositoryTest {
     MemberRepository memberRepository;
     @Autowired
     TeamRepository teamRepository;
+    @PersistenceContext
+    EntityManager em;
 
     @Test
     public void testMember() {
@@ -180,7 +184,7 @@ class MemberRepositoryTest {
         // 반환타입이 Page 이므로 totalCount 계산하는 쿼리까지 같이 나감
         Page<Member> page = memberRepository.findByAge(age, pageRequest);
 
-        // DTO로 변환하는 바법
+        // DTO로 변환하는 방법
         page.map(member -> new MemberDto(member.getId(), member.getUsername(), null));
 
         // then
@@ -197,5 +201,29 @@ class MemberRepositoryTest {
         assertThat(page.getTotalPages()).isEqualTo(2);
         assertThat(page.isFirst()).isTrue();
         assertThat(page.hasNext()).isTrue();
+    }
+
+    @Test
+    public void bulkUpdate() {
+        // given
+        memberRepository.save(new Member("member1", 10));
+        memberRepository.save(new Member("member2", 19));
+        memberRepository.save(new Member("member3", 20));
+        memberRepository.save(new Member("member4", 21));
+        memberRepository.save(new Member("member5", 40));
+
+        // when
+        // 벌크연산은 영속성 컨텍스트와 관련이 없다.
+        // JPQL의 경우에는 실행 전에 이전 쿼리들을 다 반영하게 된다
+        int resultCount = memberRepository.bulkAgePlus(20);
+//        em.flush();
+//        em.clear();
+
+        List<Member> result = memberRepository.findByUsername("member5");
+        Member member5 = result.get(0);
+        System.out.println("member 5 = " + member5);
+
+        // then
+        assertThat(resultCount).isEqualTo(3);
     }
 }
